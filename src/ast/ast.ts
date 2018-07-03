@@ -3,6 +3,16 @@ import { ParserBuffer } from "../astparsers/buffer";
 
 export class ASTNode {
 
+  // can there be some named nodes ??? 
+  name = ''
+
+  // if you collect things like
+  // - classBody
+  // - arguments
+  // - extends
+  // ... etc.
+  namedChildren:{[key:string]:ASTNode[]} = {}
+
   children:ASTNode[] = []
   parent:ASTNode
   
