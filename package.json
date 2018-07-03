@@ -1,0 +1,26 @@
+{
+  "name": "rangergrammar",
+  "version": "1.0.0",
+  "description": "Parser for different grammars",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:ts": "tsc --declaration false",
+    "build": "npm run build:ts",
+    "start": "npm run build && node dist/src/index"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/terotests/RangerGrammar.git"
+  },
+  "keywords": [
+    "ast"
+  ],
+  "author": "Tero Tolonen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/terotests/RangerGrammar/issues"
+  },
+  "homepage": "https://github.com/terotests/RangerGrammar#readme",
+  "dependencies": {}
+}
