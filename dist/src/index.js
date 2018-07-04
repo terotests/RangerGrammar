@@ -28,7 +28,7 @@ var isComparator = detector_1.createDetector(equal_signs);
 var isStatement = detector_1.createDetector(statements);
 var isKeyword = detector_1.createDetector(keywords);
 //
-var buff = new buffer_1.ParserBuffer(["\n\n  SELECT name FROM foobar;\n\n  for while 22 ( 4*4*19/2)\n  begin\n   3 4 5  what\n  end\n\n  class foobar  {\n    717\n  }\n\n  class someotherClass\n  class myClass\n\n"]);
+var buff = new buffer_1.ParserBuffer(["\n\n  SELECT name FROM foobar;\n\n  for while 22 ( 4*4*19/2)\n  begin\n   3 4 5  what\n  end\n\n  class foobar  {\n    717\n  }\n\n  class someotherClass\n  class myClass\n\n  class abba {\n    This is the class Defintion\n  }\n\n"]);
 var isFor = detector_1.createDetector(['if', 'while', 'for']);
 /*
 
@@ -115,8 +115,26 @@ var startRule = buffer_1.WalkRuleSet.create('std', [
     // 3. name rule with multiple instances..
     // 4. a the ruleset could also be run only once...
     buffer_1.WalkRule.createEnterRule('class', [
+        // maybe some ordered state which is created when you enter this...
+        // function which creates the state function ? 
+        // first you consume name, then optional args, then body
+        // finally you exit the conditional parser...
         is_space,
-        is_valid_identifier,
+        buffer_1.WalkRule.generator(function () {
+            // Example of rule which matches only once...
+            var cnt = 0;
+            return buffer_1.WalkRule.create(function (buff) {
+                var matches = is_valid_identifier.exec(buff);
+                if (matches) {
+                    if (cnt++ > 0) {
+                        throw 'Can not match two identifiers at class!!! ' + buff.buff.substring(buff.i);
+                    }
+                    // and set the name for the element...
+                    matches.name = 'className';
+                    return matches;
+                }
+            });
+        }),
         // collect this rule into special variable name 'classBody'
         buffer_1.WalkRule.createEnterRule('{', [
             is_space,

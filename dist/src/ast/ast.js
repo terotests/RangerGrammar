@@ -2,6 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var ASTNode = /** @class */ (function () {
     function ASTNode() {
+        // can there be some named nodes ??? 
+        this.name = '';
+        // if you collect things like
+        // - classBody
+        // - arguments
+        // - extends
+        // ... etc.
+        this.namedChildren = {};
         this.children = [];
         this.end_expression = false;
         this.infix_operator = false;
@@ -12,13 +20,24 @@ var ASTNode = /** @class */ (function () {
         this.block = false;
     }
     ASTNode.prototype.getCodeString = function () {
+        var named = Object.keys(this.namedChildren);
+        var n = '';
+        if (named.length > 0) {
+            for (var _i = 0, named_1 = named; _i < named_1.length; _i++) {
+                var name_1 = named_1[_i];
+                n = n + name_1 + ' => ' + this.namedChildren[name_1].map(function (n) { return n.getCodeString(); }).join(',');
+            }
+        }
+        if (n) {
+            n = "[" + n + "]";
+        }
         if (this.expression) {
-            return this.expression_name + this.children.map(function (ch) { return ch.getCodeString(); }).join(' ') + ')';
+            return n + this.expression_name + this.children.map(function (ch) { return ch.getCodeString(); }).join(' ') + ')';
         }
         if (this.buff) {
             if (this.sp > this.ep)
                 return '';
-            return this.buff.substring(this.sp, this.ep);
+            return n + this.buff.substring(this.sp, this.ep);
         }
     };
     return ASTNode;

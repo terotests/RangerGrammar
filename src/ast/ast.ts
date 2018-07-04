@@ -33,12 +33,22 @@ export class ASTNode {
   ep : number
 
   getCodeString() : string {
+    const named = Object.keys(this.namedChildren);
+    let n = ''
+    if(named.length > 0 ) {
+      for( let name of named ) {
+        n = n + name + ' => '+this.namedChildren[name].map( n => n.getCodeString() ).join(',')
+      }
+    }
+    if(n) {
+      n = `[${n}]`
+    }
     if(this.expression) {
-      return this.expression_name + this.children.map( ch => ch.getCodeString() ).join(' ') + ')'
+      return n + this.expression_name + this.children.map( ch => ch.getCodeString() ).join(' ') + ')' 
     }
     if(this.buff) {
       if(this.sp > this.ep) return ''
-      return this.buff.substring(this.sp, this.ep)
+      return n + this.buff.substring(this.sp, this.ep) 
     }
   }
 

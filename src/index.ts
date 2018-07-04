@@ -51,6 +51,10 @@ const buff = new ParserBuffer([`
   class someotherClass
   class myClass
 
+  class abba {
+    This is the class Defintion
+  }
+
 `])
 const isFor = createDetector(['if', 'while', 'for'])
 
@@ -164,7 +168,21 @@ const startRule = WalkRuleSet.create('std',
       // finally you exit the conditional parser...
 
       is_space,
-      is_valid_identifier,
+      WalkRule.generator( () => {
+        // Example of rule which matches only once...
+        let cnt = 0
+        return WalkRule.create( (buff) => {
+          const matches = is_valid_identifier.exec(buff);
+          if( matches ) {
+            if(cnt++ > 0) {
+              throw 'Can not match two identifiers at class!!! ' + buff.buff.substring( buff.i )
+            }
+            // and set the name for the element...
+            matches.name = 'className'
+            return matches  
+          }
+        })
+      }),
       // collect this rule into special variable name 'classBody'
       WalkRule.createEnterRule('{', [
         is_space,

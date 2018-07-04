@@ -29,12 +29,23 @@ export class WalkRule {
   scopeName = ''
   callback : (rulename:string, buff:ParserBuffer, stepLen:number) => void
   exec : (buff:ParserBuffer) => ASTNode | undefined
+
+  // if set the rule is constructed using this function
+  ruleGenerator : () => WalkRule | undefined
+
   ruleset : WalkRuleSet
+
   static create( fn:(buff:ParserBuffer) => ASTNode | undefined ) : WalkRule {
     const n = new WalkRule()
     n.exec = fn
     return n
   }
+
+  static generator( fn:() => WalkRule ) : WalkRule {
+    const n = new WalkRule()
+    n.ruleGenerator = fn
+    return n
+  }  
 
   static createSub( 
       fn:(buff:ParserBuffer) => ASTNode | undefined,
@@ -234,10 +245,14 @@ export class ParserBuffer  {
     }
     let last_i = this.i
     let last_buff = this.buff
+
+    let list_of_rules = this.activeRule.walkRules.map( r => {
+      return r.ruleGenerator ? r.ruleGenerator() : r
+    })
     while(!this.eof) {
       last_i = this.i
       last_buff = this.buff
-      for(let rule of this.activeRule.walkRules) {
+      for(let rule of list_of_rules) {
         const res = rule.exec(this)
         if(res) {
           if(res.end_expression) return
@@ -255,7 +270,12 @@ export class ParserBuffer  {
               this.activeRule = current_ruleset
             }            
           }
-          parentNode.children.push(res)
+          if(res.name) {
+            if(!parentNode.namedChildren[res.name]) parentNode.namedChildren[res.name] = []
+            parentNode.namedChildren[res.name].push( res )
+          } else {
+            parentNode.children.push(res)
+          }
           break
         }
       }

@@ -29,6 +29,11 @@ var WalkRule = /** @class */ (function () {
         n.exec = fn;
         return n;
     };
+    WalkRule.generator = function (fn) {
+        var n = new WalkRule();
+        n.ruleGenerator = fn;
+        return n;
+    };
     WalkRule.createSub = function (fn, ruleset) {
         var n = new WalkRule();
         n.ruleset = ruleset;
@@ -192,11 +197,14 @@ var ParserBuffer = /** @class */ (function () {
         }
         var last_i = this.i;
         var last_buff = this.buff;
+        var list_of_rules = this.activeRule.walkRules.map(function (r) {
+            return r.ruleGenerator ? r.ruleGenerator() : r;
+        });
         while (!this.eof) {
             last_i = this.i;
             last_buff = this.buff;
-            for (var _i = 0, _a = this.activeRule.walkRules; _i < _a.length; _i++) {
-                var rule = _a[_i];
+            for (var _i = 0, list_of_rules_1 = list_of_rules; _i < list_of_rules_1.length; _i++) {
+                var rule = list_of_rules_1[_i];
                 var res = rule.exec(this);
                 if (res) {
                     if (res.end_expression)
@@ -215,7 +223,14 @@ var ParserBuffer = /** @class */ (function () {
                             this.activeRule = current_ruleset;
                         }
                     }
-                    parentNode.children.push(res);
+                    if (res.name) {
+                        if (!parentNode.namedChildren[res.name])
+                            parentNode.namedChildren[res.name] = [];
+                        parentNode.namedChildren[res.name].push(res);
+                    }
+                    else {
+                        parentNode.children.push(res);
+                    }
                     break;
                 }
             }
