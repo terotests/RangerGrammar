@@ -7,120 +7,7 @@ Buffer is created for parsing streams of values and strings.
 Object.defineProperty(exports, "__esModule", { value: true });
 var detector_1 = require("./detector");
 var ast_1 = require("../ast/ast");
-var WalkCmd = /** @class */ (function () {
-    function WalkCmd() {
-        // does this command end the expression?
-        this.end_expression = false;
-        // These could be properties of the node
-        this.is_expression = false;
-        this.is_block = false;
-    }
-    return WalkCmd;
-}());
-exports.WalkCmd = WalkCmd;
-// how to create language rules
-var WalkRule = /** @class */ (function () {
-    function WalkRule() {
-        this.name = '';
-        this.scopeName = '';
-    }
-    WalkRule.create = function (fn) {
-        var n = new WalkRule();
-        n.exec = fn;
-        return n;
-    };
-    WalkRule.generator = function (fn) {
-        var n = new WalkRule();
-        n.ruleGenerator = fn;
-        return n;
-    };
-    WalkRule.createSub = function (fn, ruleset) {
-        var n = new WalkRule();
-        n.ruleset = ruleset;
-        n.exec = fn;
-        return n;
-    };
-    WalkRule.createEnterRule = function (startCh, ruleset) {
-        var does_match = detector_1.createDetector([startCh]);
-        var endCondition = new WalkRule();
-        // How can you evaluate the buffer using the new reuleset ? 
-        endCondition.exec = function (buff) {
-            var i = does_match(buff.buff, buff.i);
-            if (i >= 0) {
-                buff.step(startCh.length);
-                var node = new ast_1.ASTNode();
-                node.expression_name = startCh;
-                node.expression = true;
-                return node;
-            }
-        };
-        var rulez = new WalkRuleSet;
-        rulez.walkRules = ruleset;
-        endCondition.ruleset = rulez;
-        return endCondition;
-    };
-    WalkRule.createExit = function () {
-        var endCondition = new WalkRule();
-        // How can you evaluate the buffer using the new reuleset ? 
-        endCondition.exec = function (buff) {
-            // exit in any case
-            var node = new ast_1.ASTNode();
-            node.end_expression = true;
-            return node;
-        };
-        return endCondition;
-    };
-    WalkRule.createExitRule = function (endCh) {
-        var does_match = detector_1.createDetector([endCh]);
-        var endCondition = new WalkRule();
-        // How can you evaluate the buffer using the new reuleset ? 
-        endCondition.exec = function (buff) {
-            var i = does_match(buff.buff, buff.i);
-            if (i >= 0) {
-                buff.step(endCh.length);
-                var node = new ast_1.ASTNode();
-                node.end_expression = true;
-                return node;
-            }
-        };
-        return endCondition;
-    };
-    WalkRule.createTokenRules = function (list) {
-        var does_match = detector_1.createDetector(list);
-        var endCondition = new WalkRule();
-        // How can you evaluate the buffer using the new reuleset ? 
-        endCondition.exec = function (buff) {
-            var i = does_match(buff.buff, buff.i);
-            if (i >= 0) {
-                // Token node...
-                var node = new ast_1.ASTNode();
-                node.sp = buff.i;
-                node.ep = buff.i + list[i].length;
-                node.buff = buff.buff;
-                buff.step(list[i].length);
-                return node;
-            }
-        };
-        return endCondition;
-    };
-    return WalkRule;
-}());
-exports.WalkRule = WalkRule;
-// Some rules to apply in ceratain conditions...
-var WalkRuleSet = /** @class */ (function () {
-    function WalkRuleSet() {
-        this.name = '';
-        this.walkRules = [];
-    }
-    WalkRuleSet.create = function (name, rules) {
-        var o = new WalkRuleSet();
-        o.name = name;
-        o.walkRules = rules;
-        return o;
-    };
-    return WalkRuleSet;
-}());
-exports.WalkRuleSet = WalkRuleSet;
+var walker_1 = require("../rules/walker");
 var ParserBuffer = /** @class */ (function () {
     function ParserBuffer(initWith) {
         this.__len = 0;
@@ -147,6 +34,30 @@ var ParserBuffer = /** @class */ (function () {
         if (typeof (this.buff) === 'undefined')
             this.eof = true;
     }
+    ParserBuffer.prototype.save = function () {
+        return {
+            buff: this.buff,
+            i: this.i,
+            buffers: this.buffers,
+            walkRules: this.walkRules,
+            namedRulez: this.namedRulez,
+            rulez: this.rulez,
+            activeRuleset: this.activeRuleset,
+            buff_index: this.buff_index,
+            used_index: this.used_index,
+        };
+    };
+    ParserBuffer.prototype.restore = function (from) {
+        this.buff = from.buff;
+        this.i = from.i;
+        this.buffers = from.buffers;
+        this.walkRules = from.walkRules;
+        this.namedRulez = from.namedRulez;
+        this.rulez = from.rulez;
+        this.activeRuleset = from.activeRuleset;
+        this.buff_index = from.buff_index;
+        this.used_index = from.used_index;
+    };
     ParserBuffer.prototype.addRule = function (rule) {
         this.walkRules.push(rule);
     };
@@ -167,7 +78,7 @@ var ParserBuffer = /** @class */ (function () {
     ParserBuffer.prototype.startEnd = function (startCh, endCh) {
         var is_start = this.createDetector([startCh]);
         var is_end = this.createDetector([endCh]);
-        var is_paren_start = new WalkRule();
+        var is_paren_start = new walker_1.WalkRule();
         // How can you evaluate the buffer using the new reuleset ? 
         is_paren_start.exec = function (buff) {
             if (is_start() !== false) {
@@ -176,7 +87,7 @@ var ParserBuffer = /** @class */ (function () {
                 return node;
             }
         };
-        var is_paren_end = WalkRule.create(function (buff) {
+        var is_paren_end = walker_1.WalkRule.create(function (buff) {
             if (is_end() !== false) {
                 var node = new ast_1.ASTNode();
                 node.end_expression = true;
@@ -187,42 +98,195 @@ var ParserBuffer = /** @class */ (function () {
         this.addRule(is_paren_end);
     };
     ParserBuffer.prototype.createRule = function (fn) {
-        var rule = new WalkRule();
+        var rule = new walker_1.WalkRule();
         rule.exec = fn;
         this.walkRules.push(rule);
     };
+    // almost same as "exec"
+    ParserBuffer.prototype.walkRule = function (rule) {
+        // also, the rule could be just a reference to a some subrule...
+        // just the simple rule execution...
+        var theNode = rule.exec(this);
+        // could the execute return also new rule ? 
+        if (theNode instanceof walker_1.WalkRule) {
+            return;
+        }
+        if (rule.isRequired && !theNode) {
+            throw "Error parsing rule " + rule.name;
+        }
+        // can you create another rule using the "exec" ???
+        // The rule has information if you should walk further...
+        /*
+        const rulez = new WalkRuleSet
+        rulez.walkRules = ruleset
+        endCondition.ruleset = rulez
+        endCondition.name = startCh
+        return endCondition
+        */
+        if (theNode && !theNode.nop) {
+            if (rule.typeName)
+                theNode.typeName = rule.typeName;
+            // this node could be just ending the expression...
+            if (theNode.end_expression)
+                return theNode;
+            // we have children maybe then...
+            if (theNode.expression) {
+                // here:
+                // 1. needs expression
+                // 2. the ruleset must define the rules which are used inside this expression
+                if (rule.ruleset) {
+                    // 1. map the subrules based on the generator...
+                    var list_of_rules = rule.ruleset.walkRules.map(function (r) {
+                        return r.ruleGenerator ? r.ruleGenerator() : r;
+                    });
+                    var res = void 0;
+                    var last_index = this.i;
+                    var not_found_cnt = 0;
+                    var exit_xpr = false;
+                    // current op pred...
+                    var active_op_pred = 9999;
+                    // the primary operator
+                    var left_op = theNode;
+                    var right_op = null;
+                    var activeNode = theNode;
+                    // for the sub expression which may be created...
+                    var node_stack = [];
+                    while (!this.eof && !exit_xpr) {
+                        for (var _i = 0, list_of_rules_1 = list_of_rules; _i < list_of_rules_1.length; _i++) {
+                            var rule_1 = list_of_rules_1[_i];
+                            // 3. Here, perhaps we should walk the subrule
+                            // NOT:
+                            // res = rule.exec(this)
+                            res = this.walkRule(rule_1);
+                            // if we get node, add it to the ASTNode created...
+                            if (res instanceof ast_1.ASTNode) {
+                                /*
+                                  4               ( 4 )
+                                  4 +             (+ 4)             "op wants 1 more..."
+                                  4 + 5           (+ 4 5)           "full operator"
+                                  4 + 5 *         (+ 4 (* 5))
+                                  4 + 5 * 10      (+ 4 (* 5 10))
+                
+                                  4
+                                  4 *
+                                  4 * 5
+                                  4 * 5 +
+                                  4 * 5 + 10
+                
+                
+                                  */
+                                if (res.operator_pred > 0) {
+                                    console.log('FOUND OP', res, 'pred', res.operator_pred);
+                                    // console.log('OP parent is ', theNode)
+                                    console.log('active_pred', active_op_pred);
+                                    if (res.operator_assoc === 1) {
+                                        if (active_op_pred < res.operator_pred) {
+                                            console.log();
+                                            // we have to create a new by stealing the last part from active...
+                                            var last_ch = theNode.children.pop();
+                                            var new_expr = new ast_1.ASTNode();
+                                            new_expr.expression = true;
+                                            new_expr.children.push(res);
+                                            new_expr.children.push(last_ch);
+                                            activeNode.children.push(new_expr);
+                                            node_stack.push(activeNode);
+                                            activeNode = new_expr;
+                                            active_op_pred = res.operator_pred;
+                                            continue;
+                                        }
+                                        else {
+                                        }
+                                        // TODO: fix 
+                                        console.log('left-to-rigth assoc op');
+                                        // simple, add this as first
+                                        activeNode.children.unshift(res);
+                                    }
+                                    active_op_pred = res.operator_pred;
+                                    // has been managed using operator rules
+                                    continue;
+                                }
+                                if (res.end_expression) {
+                                    exit_xpr = true;
+                                    break;
+                                }
+                                if (!rule_1.isSkipped) {
+                                    // the res.name could be groupName for the AstNode
+                                    if (res.name) {
+                                        if (!activeNode.namedChildren[res.name])
+                                            activeNode.namedChildren[res.name] = [];
+                                        activeNode.namedChildren[res.name].push(res);
+                                    }
+                                    else {
+                                        activeNode.children.push(res);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                        if (last_index === this.i) {
+                            // not finding anything ???
+                            if (not_found_cnt++ > 0)
+                                break;
+                        }
+                        else {
+                            not_found_cnt = 0;
+                        }
+                        last_index = this.i;
+                    }
+                }
+            }
+        }
+        // this is the default behaviour... walk and return...
+        return theNode;
+    };
+    /*
+    
+    The Walk should be refactored so that it can walk any Rule and return a node
+    or list of nodes
+  
+    */
     ParserBuffer.prototype.walk = function (parentNode) {
-        if (!this.activeRule) {
+        if (!this.activeRuleset) {
             throw 'Active ruleset not defined';
         }
         var last_i = this.i;
         var last_buff = this.buff;
-        var list_of_rules = this.activeRule.walkRules.map(function (r) {
+        var list_of_rules = this.activeRuleset.walkRules.map(function (r) {
             return r.ruleGenerator ? r.ruleGenerator() : r;
         });
         while (!this.eof) {
             last_i = this.i;
             last_buff = this.buff;
-            for (var _i = 0, list_of_rules_1 = list_of_rules; _i < list_of_rules_1.length; _i++) {
-                var rule = list_of_rules_1[_i];
-                var res = rule.exec(this);
-                if (res) {
+            var res = null;
+            for (var _i = 0, list_of_rules_2 = list_of_rules; _i < list_of_rules_2.length; _i++) {
+                var rule = list_of_rules_2[_i];
+                res = rule.exec(this);
+                if (rule.isRequired && !res) {
+                    throw "Error parsing rule " + rule.name;
+                }
+                if (res && !res.nop) {
+                    // walking the subrules etc...
                     if (res.end_expression)
                         return;
                     if (res.expression) {
                         // -- the rule matched, check if the rule has its own set of rules
-                        var current_ruleset = this.activeRule;
+                        var current_ruleset = this.activeRuleset;
                         if (rule.ruleset) {
-                            this.rulez.push(this.activeRule);
-                            this.activeRule = rule.ruleset;
+                            this.rulez.push(this.activeRuleset);
+                            this.activeRuleset = rule.ruleset;
                         }
+                        // this approach is perhaps a bit less modular because it assumes
+                        // the environment is setup at some way...
                         this.walk(res);
                         // then we exit the ruleset and continue...
                         if (rule.ruleset) {
                             this.rulez.pop();
-                            this.activeRule = current_ruleset;
+                            this.activeRuleset = current_ruleset;
                         }
                     }
+                    // This is a bit strange, consider removing...
+                    if (rule.typeName)
+                        res.typeName = rule.typeName;
                     if (res.name) {
                         if (!parentNode.namedChildren[res.name])
                             parentNode.namedChildren[res.name] = [];
@@ -236,7 +300,9 @@ var ParserBuffer = /** @class */ (function () {
             }
             if (last_i === this.i && last_buff === this.buff) {
                 // maybe rise error? could not match
-                throw 'Parser could not apply rules to the whole buffer';
+                console.log('--- rules --- ');
+                console.log(list_of_rules);
+                throw 'Parser could not apply rules to the whole buffer at ' + this.buff.substring(this.i);
             }
         }
     };

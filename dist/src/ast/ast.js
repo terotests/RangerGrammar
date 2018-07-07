@@ -4,6 +4,7 @@ var ASTNode = /** @class */ (function () {
     function ASTNode() {
         // can there be some named nodes ??? 
         this.name = '';
+        this.typeName = '';
         // if you collect things like
         // - classBody
         // - arguments
@@ -18,6 +19,7 @@ var ASTNode = /** @class */ (function () {
         this.operator_assoc = 0;
         this.expression = false;
         this.block = false;
+        this.nop = false;
     }
     ASTNode.prototype.getCodeString = function () {
         var named = Object.keys(this.namedChildren);

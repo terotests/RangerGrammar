@@ -1,5 +1,6 @@
 
-import { ParserBuffer, WalkRule, WalkRuleSet } from './astparsers/buffer'
+import { WalkRule, WalkRuleSet, ParsingRule } from './rules/walker'
+import { ParserBuffer } from './astparsers/buffer'
 import {detectorFn, createDetector} from './astparsers/detector'
 import { ASTNode } from './ast/ast';
 
@@ -12,7 +13,7 @@ const statements = [
   'for', 'while', 'if','then'
 ]
 const keywords = [
-  'class', 'function', 'extends'
+  'class', 'function', 'extends', 'static'
 ]
 
 /*
@@ -35,7 +36,7 @@ const isStatement = createDetector(statements)
 const isKeyword = createDetector(keywords)
 
 //
-const buff = new ParserBuffer([`
+const buff2 = new ParserBuffer([`
 
   SELECT name FROM foobar;
 
@@ -44,19 +45,30 @@ const buff = new ParserBuffer([`
    3 4 5  what
   end
 
+  class normalClass
+
+  class lolcatz
+
   class foobar  {
     717
+  }
+
+  static class foob {
+
   }
 
   class someotherClass
   class myClass
 
-  class abba {
+  class abba extends someclass {
     This is the class Defintion
   }
 
 `])
-const isFor = createDetector(['if', 'while', 'for'])
+
+const buff = new ParserBuffer([`
+  class normalClass
+`])
 
 /*
 
@@ -148,11 +160,13 @@ const is_plus = WalkRule.create(  buff => buff.getWhile( buff => buff.here() == 
 */
 
 // ---> the basic ruleset...
+
+let rule_class;
+
 const startRule = WalkRuleSet.create('std', 
   [
     is_space,
     is_numeric,
-
 
     // 1. rule can be simple push as child rule
     // 2. rule can be named rule
@@ -160,7 +174,25 @@ const startRule = WalkRuleSet.create('std',
 
     // 4. a the ruleset could also be run only once...
 
-    WalkRule.createEnterRule('class', 
+    
+    WalkRule.try(WalkRule.createEnterRule('class', 
+    [
+      // maybe some ordered state which is created when you enter this...
+      // function which creates the state function ? 
+      // first you consume name, then optional args, then body
+      // finally you exit the conditional parser...
+      is_space,
+      WalkRule.fail(),
+      WalkRule.rule({
+        maxCnt : 1,
+        required : true,
+        matchName : 'classN',
+        walkRule : WalkRule.createTokenRules(['lolcatz'])
+      }),      
+      WalkRule.createExit()
+    ])),
+    
+    rule_class = WalkRule.createEnterRule('class', 
     [
       // maybe some ordered state which is created when you enter this...
       // function which creates the state function ? 
@@ -168,6 +200,30 @@ const startRule = WalkRuleSet.create('std',
       // finally you exit the conditional parser...
 
       is_space,
+      WalkRule.rule({
+        maxCnt : 1,
+        matchName : 'classN',
+        walkRule : is_valid_identifier
+      }),
+      // class X extends Y
+      WalkRule.createEnterRule('extends', 
+      [
+        is_space,
+        // extra rule for this condition...
+        WalkRule.rule({
+          maxCnt : 2,
+          matchName : 'lol',
+          walkRule : WalkRule.createTokenRules(['lolz'])
+        }),        
+        WalkRule.rule({
+          maxCnt : 1,
+          required : true,
+          matchName : 'className',
+          walkRule : is_valid_identifier
+        }),        
+        WalkRule.createExit()
+      ]),
+      /*
       WalkRule.generator( () => {
         // Example of rule which matches only once...
         let cnt = 0
@@ -183,6 +239,7 @@ const startRule = WalkRuleSet.create('std',
           }
         })
       }),
+      */
       // collect this rule into special variable name 'classBody'
       WalkRule.createEnterRule('{', [
         is_space,
@@ -194,6 +251,48 @@ const startRule = WalkRuleSet.create('std',
       // exits if nothing matches...
     ]), 
 
+    WalkRule.createEnterRule('static', [
+      is_space,
+      // example guard which stops the expression if evaluated many times
+      WalkRule.once(),
+      WalkRule.createEnterRule('class', 
+      [
+        is_space,
+        WalkRule.rule({
+          maxCnt : 1,
+          matchName : 'classN',
+          walkRule : is_valid_identifier
+        }),
+        // class X extends Y
+        WalkRule.createEnterRule('extends', 
+        [
+          is_space,
+          // extra rule for this condition...
+          WalkRule.rule({
+            maxCnt : 2,
+            matchName : 'lol',
+            walkRule : WalkRule.createTokenRules(['lolz'])
+          }),        
+          WalkRule.rule({
+            maxCnt : 1,
+            required : true,
+            matchName : 'className',
+            walkRule : is_valid_identifier
+          }),        
+          WalkRule.createExit()
+        ]),
+        // collect this rule into special variable name 'classBody'
+        WalkRule.createEnterRule('{', [
+          is_space,
+          is_numeric,
+          is_any,
+          WalkRule.createExitRule('}')
+        ]),      
+        WalkRule.createExit(),
+        // exits if nothing matches...
+      ])
+    ]), 
+    
     // Testing SELECT + other SQL rules
     WalkRule.createEnterRule('SELECT', [
       is_space,
@@ -237,7 +336,7 @@ buff.addRule( is_comp )
 buff.addRule( is_plus )
 buff.addRule( is_any )
 */
-buff.activeRule = startRule
+buff.activeRuleset = startRule
 
 const parentNode = new ASTNode()
 

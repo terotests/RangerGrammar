@@ -5,6 +5,7 @@ export class ASTNode {
 
   // can there be some named nodes ??? 
   name = ''
+  typeName = ''
 
   // if you collect things like
   // - classBody
@@ -27,6 +28,7 @@ export class ASTNode {
 
   expression = false
   block = false
+  nop = false
   
   buff : string 
   sp : number

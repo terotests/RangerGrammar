@@ -4,10 +4,10 @@
   "description": "Parser for different grammars",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build:ts": "tsc --declaration false",
     "build": "npm run build:ts",
-    "start": "npm run build && node dist/src/index"
+    "start": "npm run build && node dist/src/index",
+    "test": "npm run build && cd dist && ../node_modules/.bin/mocha --reporter spec"
   },
   "repository": {
     "type": "git",
@@ -22,5 +22,12 @@
     "url": "https://github.com/terotests/RangerGrammar/issues"
   },
   "homepage": "https://github.com/terotests/RangerGrammar#readme",
-  "dependencies": {}
+  "dependencies": {
+    "chai": "^4.1.2",
+    "mocha": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.1.4",
+    "@types/mocha": "^5.2.4"
+  }
 }
