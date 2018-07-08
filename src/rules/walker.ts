@@ -44,9 +44,14 @@ export interface ParsingRule {
 export type WalkerFunction = (buff:ParserBuffer) => ASTNode | WalkRule | undefined
 
 export class WalkRule {
+
   name = ''
   typeName = ''
   scopeName = ''
+
+  // the rule constructor name
+  constructorName = ''
+
   callback : (rulename:string, buff:ParserBuffer, stepLen:number) => void
   exec : WalkerFunction
 
@@ -61,11 +66,32 @@ export class WalkRule {
     return this
   }
 
+  as(name:string) {
+    this.constructorName = name 
+    return this
+  }
+
+  insertAt( position:number, rules:WalkRule[]) : WalkRule {
+    if(this.ruleset) {
+      let index = position
+      for( let r of rules ) {
+        this.ruleset.walkRules.splice(index++, 0, r)
+      }
+    }
+    return this
+  }
+
   static create( fn:WalkerFunction) : WalkRule {
     const n = new WalkRule()
     n.exec = fn
     return n
   }
+
+  static named( name:string ) : WalkRule {
+    const n = new WalkRule()
+    n.constructorName = name
+    return n
+  }  
 
   // this is a bit messed up, typeName etc.
   static createNamedType( name:string, fn:WalkerFunction) : WalkRule {

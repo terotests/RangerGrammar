@@ -22,7 +22,7 @@ var ParserBuffer = /** @class */ (function () {
         // The current ruleset to be applied...
         this.walkRules = [];
         // Named rules
-        this.namedRulez = {};
+        this.namedRules = {};
         // What is the ruleset to use...
         this.rulez = [];
         this.buffers = initWith;
@@ -40,7 +40,7 @@ var ParserBuffer = /** @class */ (function () {
             i: this.i,
             buffers: this.buffers,
             walkRules: this.walkRules,
-            namedRulez: this.namedRulez,
+            namedRulez: this.namedRules,
             rulez: this.rulez,
             activeRuleset: this.activeRuleset,
             buff_index: this.buff_index,
@@ -52,7 +52,7 @@ var ParserBuffer = /** @class */ (function () {
         this.i = from.i;
         this.buffers = from.buffers;
         this.walkRules = from.walkRules;
-        this.namedRulez = from.namedRulez;
+        this.namedRules = from.namedRules;
         this.rulez = from.rulez;
         this.activeRuleset = from.activeRuleset;
         this.buff_index = from.buff_index;
@@ -60,6 +60,10 @@ var ParserBuffer = /** @class */ (function () {
     };
     ParserBuffer.prototype.addRule = function (rule) {
         this.walkRules.push(rule);
+    };
+    ParserBuffer.prototype.saveRuleAs = function (name, rule) {
+        this.namedRules[name] = rule;
+        return this;
     };
     ParserBuffer.prototype.createDetector = function (list) {
         var _this = this;
@@ -105,6 +109,7 @@ var ParserBuffer = /** @class */ (function () {
     // almost same as "exec"
     ParserBuffer.prototype.walkRule = function (rule) {
         // also, the rule could be just a reference to a some subrule...
+        var _this = this;
         // just the simple rule execution...
         var theNode = rule.exec(this);
         // could the execute return also new rule ? 
@@ -137,7 +142,11 @@ var ParserBuffer = /** @class */ (function () {
                 if (rule.ruleset) {
                     // 1. map the subrules based on the generator...
                     var list_of_rules = rule.ruleset.walkRules.map(function (r) {
-                        return r.ruleGenerator ? r.ruleGenerator() : r;
+                        var rule = r;
+                        if (r.constructorName) {
+                            rule = _this.namedRules[r.constructorName];
+                        }
+                        return rule.ruleGenerator ? rule.ruleGenerator() : rule;
                     });
                     var res = void 0;
                     var last_index = this.i;
@@ -161,6 +170,12 @@ var ParserBuffer = /** @class */ (function () {
                             // if we get node, add it to the ASTNode created...
                             if (res instanceof ast_1.ASTNode) {
                                 /*
+                
+                                  The active operator should be asking
+                
+                                    - how many operands are still needed ?
+                                    - what is my associativity ? (left-to-rigt, right-to-left)
+                
                                   4               ( 4 )
                                   4 +             (+ 4)             "op wants 1 more..."
                                   4 + 5           (+ 4 5)           "full operator"
@@ -173,12 +188,73 @@ var ParserBuffer = /** @class */ (function () {
                                   4 * 5 +
                                   4 * 5 + 10
                 
+                                  (new Matrix) * (new Matrix)
+                
+                                  "member acess operator"
+                                  m1.x + m2.y  -> (. m1 x) + (. m2 y)
+                
+                                  "Computed Member Access"
+                                  m[key]      -> ( [] m key)
+                
+                
+                
+                
+                                  --> first you try operator 'new .. ( ... )'
+                                  --> then 'new xxx'
+                
+                                  new
+                                  new myClass
+                
+                                  ... in the original ranger there was a list of operators which was examined
+                                  ... the correct operator was selected according to the type of previous op res
+                                  
+                
+                                  Type Matchin can not be one here...
+                                  
+                                  ???
+                                  new DDD () <--- this is the class type definition
+                
+                                  The problem when trying to match ops is that we may not know
+                                  what the correct operand and datatype are at some positions...
+                
+                                  Like
+                
+                                  funtion(a,b) {
+                                    return a + b
+                                  }
+                
+                                  We do not know what types a and b really are now.
+                
+                                  funtion(a:int,b:int) {
+                                    return a + b
+                                  }
+                
+                                  Works.
+                                  Ok is
+                
+                                  const b = new Something
+                                  const f = new Something<int>
+                                  ^ specific constructor ?
+                
+                                  class myClass<T> {
+                                    function foo() : T {
+                                      const x = new T
+                                      return x
+                                    }
+                                  }
+                
+                
+                
+                                  new...
+                                    [new xxx]
+                                    [new yyyy ()]
+                                    [new something else ?? ]
                 
                                   */
                                 if (res.operator_pred > 0) {
-                                    console.log('FOUND OP', res, 'pred', res.operator_pred);
+                                    // console.log('FOUND OP', res, 'pred', res.operator_pred)
                                     // console.log('OP parent is ', theNode)
-                                    console.log('active_pred', active_op_pred);
+                                    // console.log('active_pred',  active_op_pred) 
                                     if (res.operator_assoc === 1) {
                                         if (active_op_pred < res.operator_pred) {
                                             console.log();

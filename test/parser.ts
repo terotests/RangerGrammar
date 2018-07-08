@@ -53,15 +53,39 @@ describe("Test simple parser", function() {
 
     */
 
+    let braces_rule = WalkRule.createEnterRule('{', [
+      // is_space,
+      // is_numeric,
+      // TODO: make possible injecting things to create a rule template...
+      WalkRule.createExitRule('}')
+    ])    
+
     const plus_op = WalkRule.operator('+', 13, 1)
     const mul_op = WalkRule.operator('*', 14, 1)
     const buff = new ParserBuffer([`
-      12345 + 17 * 10
+      12345 + 17 * 10 { 3 }
     `])  
+
+    // example of a named rule...
+    buff.saveRuleAs( 'spaces', is_space )
+    buff.saveRuleAs( 'braces', braces_rule )
+
+    // Then, adding subrules to some rule...
+
+
+
+
     // spaces and numbers are OK...
     const startRuleSet = WalkRuleSet.create('std', 
     [
-      is_space,
+      WalkRule.named('spaces'),
+
+      // TODO: konstructor does it's work a bit late...
+
+      // This might be some kind of constructor function which gets the
+      // prodcued rule and transforms it into 'braces'
+      WalkRule.named('braces').insertAt(0, [is_space, is_numeric]),
+//       is_space,
       is_numeric,
       plus_op,
       mul_op,

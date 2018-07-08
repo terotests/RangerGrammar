@@ -41,12 +41,24 @@ describe("Test simple parser", function () {
     
     
         */
+        var braces_rule = walker_1.WalkRule.createEnterRule('{', [
+            is_space,
+            is_numeric,
+            // TODO: make possible injecting things to create a rule template...
+            walker_1.WalkRule.createExitRule('}')
+        ]);
         var plus_op = walker_1.WalkRule.operator('+', 13, 1);
         var mul_op = walker_1.WalkRule.operator('*', 14, 1);
-        var buff = new buffer_1.ParserBuffer(["\n      12345 + 17 * 10\n    "]);
+        var buff = new buffer_1.ParserBuffer(["\n      12345 + 17 * 10 { 3 }\n    "]);
+        // example of a named rule...
+        buff.saveRuleAs('spaces', is_space);
+        buff.saveRuleAs('braces', braces_rule);
+        // Then, adding subrules to some rule...
         // spaces and numbers are OK...
         var startRuleSet = walker_1.WalkRuleSet.create('std', [
-            is_space,
+            walker_1.WalkRule.named('spaces'),
+            walker_1.WalkRule.named('braces'),
+            //       is_space,
             is_numeric,
             plus_op,
             mul_op,

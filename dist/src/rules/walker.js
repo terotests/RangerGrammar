@@ -18,6 +18,8 @@ var WalkRule = /** @class */ (function () {
         this.name = '';
         this.typeName = '';
         this.scopeName = '';
+        // the rule constructor name
+        this.constructorName = '';
         this.isRequired = false;
         this.isSkipped = false;
     }
@@ -25,9 +27,29 @@ var WalkRule = /** @class */ (function () {
         this.isSkipped = true;
         return this;
     };
+    WalkRule.prototype.as = function (name) {
+        this.constructorName = name;
+        return this;
+    };
+    WalkRule.prototype.insertAt = function (position, rules) {
+        // The rule has some subrules...
+        if (this.ruleset) {
+            var index = position;
+            for (var _i = 0, rules_1 = rules; _i < rules_1.length; _i++) {
+                var r = rules_1[_i];
+                this.ruleset.walkRules.splice(index++, 0, r);
+            }
+        }
+        return this;
+    };
     WalkRule.create = function (fn) {
         var n = new WalkRule();
         n.exec = fn;
+        return n;
+    };
+    WalkRule.named = function (name) {
+        var n = new WalkRule();
+        n.constructorName = name;
         return n;
     };
     // this is a bit messed up, typeName etc.

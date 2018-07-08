@@ -36,7 +36,7 @@ export class ParserBuffer  {
   walkRules:WalkRule[] = []
 
   // Named rules
-  namedRulez:{[key:string]:WalkRuleSet} = {}
+  namedRules:{[key:string]:WalkRule} = {}
 
   // What is the ruleset to use...
   rulez:WalkRuleSet[] = []
@@ -50,7 +50,7 @@ export class ParserBuffer  {
       i : this.i,
       buffers: this.buffers,
       walkRules: this.walkRules,
-      namedRulez : this.namedRulez,
+      namedRulez : this.namedRules,
       rulez : this.rulez,
       activeRuleset : this.activeRuleset,
       buff_index : this.buff_index,
@@ -63,7 +63,7 @@ export class ParserBuffer  {
     this.i = from.i 
     this.buffers = from.buffers 
     this.walkRules = from.walkRules
-    this.namedRulez = from.namedRulez
+    this.namedRules = from.namedRules
     this.rulez = from.rulez 
     this.activeRuleset = from.activeRuleset
     this.buff_index = from.buff_index
@@ -83,6 +83,11 @@ export class ParserBuffer  {
   addRule (rule:WalkRule) {
     this.walkRules.push(rule)
   }
+
+  saveRuleAs( name:string, rule:WalkRule) {
+    this.namedRules[name] = rule 
+    return this
+  }  
 
   createDetector( list:string[]) : () => string | boolean {
     const does_match = createDetector(list)
@@ -174,7 +179,11 @@ export class ParserBuffer  {
         if(rule.ruleset) {
           // 1. map the subrules based on the generator...
           let list_of_rules = rule.ruleset.walkRules.map( r => {
-            return r.ruleGenerator ? r.ruleGenerator() : r
+            let rule = r
+            if(r.constructorName) {
+              rule = this.namedRules[r.constructorName]
+            }
+            return rule.ruleGenerator ? rule.ruleGenerator() : rule
           })    
   
           let res
@@ -287,9 +296,9 @@ export class ParserBuffer  {
                   */
 
                 if(res.operator_pred > 0 ) {
-                  console.log('FOUND OP', res, 'pred', res.operator_pred)
+                  // console.log('FOUND OP', res, 'pred', res.operator_pred)
                   // console.log('OP parent is ', theNode)
-                  console.log('active_pred',  active_op_pred) 
+                  // console.log('active_pred',  active_op_pred) 
                   if(res.operator_assoc === 1 ) {
 
                     if( active_op_pred < res.operator_pred) {
